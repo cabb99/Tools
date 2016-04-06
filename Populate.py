@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.7
 import shutil
 import sys
+import random
 
 def main(source,Changes,ask=True):
     """Inputs:
@@ -16,9 +17,11 @@ def main(source,Changes,ask=True):
     Folders=[source]
     zchanges=[[]]
     nfolders=1
+    
     for filemod,linemod,lvalues,alias in Changes:
         #find name of the changing variable:
         found=False
+        lvalues=[str(v) for v in lvalues]
         for l in range(len(lvalues[0])):
             for v in lvalues[1:]:
                 if lvalues[0][:l]<>v[:l]:
@@ -34,8 +37,10 @@ def main(source,Changes,ask=True):
         for v in lvalues:
             for F in Folders:
                 #print '%s_%s'%(F,v.replace(common_pattern,alias))
-                new_folders+=['%s_%s'%(F,v.replace(common_pattern,alias))]
-            
+                if len(common_pattern)>0:
+                    new_folders+=['%s_%s'%(F,v.replace(common_pattern,alias))]
+                else:
+                    new_folders+=['%s_%s%s'%(F,alias,v)]
             for c in zchanges:
                 new_changes+=[c+[(filemod,linemod,v)]]
                 #print new_folders
@@ -165,7 +170,7 @@ if __name__=='__main__':
             exit(2)
         Changes+=[[filemod,linemod,lvalues,alias]]
     #Execute main function
-    main(source,Changes,args.y)
+    main(source,Changes,not args.y)
     
     
 

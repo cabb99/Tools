@@ -17,12 +17,15 @@ if __name__=='__main__':
     for folder in glob.glob(args.Folders):
         #Enter the directory
         os.chdir(folder)
-        #Test condition
-        Execute=True        
-        with open(max(glob.iglob(args.condition[0]), key=os.path.getctime)) as handle:
-            for line in handle:
-                if args.condition[1] in line:
-                    Execute=False        
+        try:        
+            #Test condition
+            Execute=True        
+            with open(max(glob.iglob(args.condition[0]), key=os.path.getctime)) as handle:
+                for line in handle:
+                    if args.condition[1] in line:
+                        Execute=False
+        except ValueError:
+            Execute=False
         #Execute the command
         if Execute:        
             subprocess.call(args.command, shell=True)

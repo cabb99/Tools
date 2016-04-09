@@ -19,11 +19,11 @@ if __name__=='__main__':
         os.chdir(folder)
         try:        
             #Test condition
-            Execute=True        
+            Execute=False        
             with open(max(glob.iglob(args.condition[0]), key=os.path.getctime)) as handle:
                 for line in handle:
                     if args.condition[1] in line:
-                        Execute=False
+                        Execute=True
         except ValueError:
             Execute=False
         #Execute the command

@@ -26,7 +26,10 @@ if __name__=='__main__':
                         Execute=True
         except ValueError:
             Execute=False
-        #Execute the command
+        except TypeError:
+	    Execute=True
+
+	#Execute the command
         if Execute:        
             subprocess.call(args.command, shell=True)
         #Back to the original directory

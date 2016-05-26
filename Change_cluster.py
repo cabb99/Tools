@@ -1,44 +1,43 @@
 #!/usr/bin/env python
-
-SBATCH_options={
+import argparse,os,fileinput
+cluster_configuration={
 #davinci
 ('davinci','commons'):
-{'max_time':8*60*60,
+{'time':8*60*60,
  'account':'commons'},
 ('davinci','ctbp-common'):
-{'max_time':24*60*60,
+{'time':24*60*60,
  'account':'ctbp-common'},
 ('davinci','ctbp-wolynes'):
-{'max_time':6*60*60,
+{'time':6*24*60*60,
  'account':'ctbp-wolynes'},
 ('davinci','interactive'):
-{'max_time':30*60,
+{'time':30*60,
  'account':'commons'},
 #nots
 ('nots','commons'):
-{'max_time':15*60*60,
+{'time':15*24*60*60,
  'account':'ctbp-common'},
 ('nots','interactive'):
-{'max_time':30*60,
+{'time':30*60,
  'account':'commons'},
 #po
 ('po','commons'):
-{'max_time':3*24*60*60,
+{'time':3*24*60*60,
  'account':'commons'},
 #bioU
 ('biou','commons'):
-{'max_time':24*60*60,
+{'time':24*60*60,
  'account':'commons'},
 ('biou','interactive'):
-{'max_time':30*60,
+{'time':30*60,
  'account':'commons'}
 } 
 
-clusters=list(set([cluster for cluster,partition in SBATCH_options.keys()]))
-partitions=list(set([partition for cluster,partition in SBATCH_options.keys()]))
+clusters=list(set([cluster for cluster,partition in cluster_configuration.keys()]))
+partitions=list(set([partition for cluster,partition in cluster_configuration.keys()]))
 clusters.sort()
 
-import argparse
 parser=argparse.ArgumentParser(description='Changes the slurm commands from a\
 script file from one cluster configuration to another cluster configuration')
 #Needed arguments
@@ -61,13 +60,13 @@ parser.add_argument('--mem-per-cpu',type=str,
                     help='Maximum amount of physical memory used per process, ex:1024M')
 parser.add_argument('--exclusive',action='store_true',
                     help='No other job will be able to run in the same node')
-parser.add_argument('--export',default='None',
+parser.add_argument('--export',default='All',
                     help='Exports the environment variables to the cluster')
 #Other optional arguments
 parser.add_argument('--job-name',default=None,type=str,
                     help='The name of the job, "WD" will give it the name of the folder it belongs')
-parser.add_argument('--time',default=None,type=int,
-                    help='The maximum amount of time that the job will run, if not specified will be automatically calculated')
+parser.add_argument('--time',default=None,type=str,
+                    help='The maximum amount of time in slurm format that the job will run, if not specified will be automatically calculated')
 parser.add_argument('--output',type=str,
                     help='The name of the file where the output will be writen')
 parser.add_argument('--error',type=str,
@@ -118,21 +117,87 @@ def sformat(t):
     else:
         return '%02i:%02i'%(m,s)
 
-#os.path.abspath
-
-print dir(parser)
-
 args=parser.parse_args()
-[arg for arg in dir(args) if (arg[0] <> '_' and vars(args)[arg]<>None and vars(args)[arg]<>False and arg<>'scripts')]
+command_args={arg.replace('_','-'):vars(args)[arg] for arg in dir(args) if (arg[0] <> '_' and vars(args)[arg]<>None and vars(args)[arg]<>False and arg<>'scripts')}
+try:
+    default_args=cluster_configuration[(args.cluster,args.partition)]
+except KeyError:
+    print "The cluster/partition combination %s/%s is not defined on this program"%(args.cluster,args.partition)
+    print "Only the following combinations are available:\n%s"%('\n'.join(['%s/%s'%(a,b) for a,b in cluster_configuration.keys()]))
+    exit(2)
 for script in args.scripts:
-    print script
+    
     #Try to read current configuration
-
+    script_args={}
+    print "Old Configuration:"
+    with open(script) as S:
+        for line in S:
+            if len(line)>10 and line[:7]=='#SBATCH' and len(line.split('--'))==2:
+                var,val=line.split('--')[1].split('=')
+                print line[:-1]
+                script_args.update({var:val.split('\n')[0]})
     #Replace
-    ##First take into account minimal values
-    
+    #Time management
+    if 'time' in script_args or 'time' in command_args:
+        if 'time' in script_args:
+            time=stime(script_args['time'])
+            if 'cluster' in script_args and 'partition' in script_args and\
+            (script_args['cluster'],script_args['partition']) in cluster_configuration and\
+            time==cluster_configuration[(script_args['cluster'],script_args['partition'])]['time']:
+                time=default_args['time']
+                #Will conserve the time only if it is shown that is not the max 
+                #time possible and if the time is less than that of the new cluster.
+            else:
+                time=default_args['time']
+        if 'time' in command_args:
+            time=stime(command_args['time'])
+        if time>default_args['time']:
+            time=default_args['time']
+    else:
+        time=default_args['time']
     ##Replace and add with values from old file
-    
+    new_args=script_args.copy()
     ##Replace and add from values from command line
+    new_args.update(default_args)
+    new_args.update(command_args)
+    new_args.update({'time':sformat(time)})
+    #Generate a new name:
+    if 'job-name' in new_args and new_args['job-name']=='WD':
+        new_args['job-name']=os.path.abspath(script).split('/')[-2]
     
-    #Write new configuration
+    #Test and confirm new configuration
+    keys=new_args.keys()
+    keys.sort()
+    print "New Configuration"
+    new_configuration=''
+    for arg in keys:
+        new_configuration+='#SBATCH --%s=%s\n'%(arg,new_args[arg])
+    print new_configuration
+    #Replace with new configuration
+    import fileinput
+    for i,line in enumerate(fileinput.input(script, inplace=True)):
+        if i==1:
+            print new_configuration.rstrip('\n')
+        if len(line)>10 and line[:7]=='#SBATCH' and len(line.split('--'))==2:
+            continue
+        print line.rstrip('\n')
+        
+    '''
+    from shutil import move
+    from os import remove
+    #Move old file to backup
+    move(script, script+'.backup')
+    #Create temp file
+    with open(script,'w') as new_file, open(script+'.backup') as old_file:
+        for i,line in enumerate(old_file):
+            if i==1:
+                new_file.write(new_configuration)
+            if len(line)>10 and line[:7]=='#SBATCH' and len(line.split('--'))==2:
+                continue
+            new_file.write(line)
+    #Remove original file
+    #remove(script+'.backup')
+    '''
+        
+    
+    

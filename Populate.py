@@ -2,6 +2,7 @@
 import shutil
 import sys
 import random
+import numpy
 
 def main(source,Changes,ask=True):
     """Inputs:

@@ -1,22 +1,22 @@
 #!/usr/bin/python
-#SBATCH --export=ALL
-#SBATCH --job-name=Lysozime
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --ntasks-per-node=1
 #SBATCH --account=ctbp-common
+#SBATCH --export=All
+#SBATCH --job-name=Lysozime
 #SBATCH --partition=ctbp-common
 #SBATCH --time=1-00:00:00
 
 #Modules
-import time,subprocess, os, glob
+import time
+import subprocess
+import os
+import glob
+import random
+import sys
 
 #Parameters
-import os
-PDB_name=os.getcwd().split('/')[-1][:os.getcwd().split('/')[-1].find('_All')]
 lmp_serial="./lmp_serial_552_mod_frust_elec"
-input_file="%s.in"%PDB_name
-seq_file="%s.seq"%PDB_name
+input_file=glob.glob("*.in")[0]
+seq_file=glob.glob("*.seq")[0]
 
 #Functions
 def write_dump(read_file,write_file,initial_ts,final_ts):
@@ -75,16 +75,19 @@ handle.close()
 ### then does some post-processing
 
 #Print the date it starts and ends
-print "The job starts at", time.ctime()
+sys.stdout.write("The job starts at %s\n"%time.ctime())
+sys.stdout.flush()
 import atexit
 def exit_handler():
-    print "The job ends at", time.ctime()
+    sys.stdout.write("The job ends at %s\n"%time.ctime())
+    sys.stdout.flush()
 atexit.register(exit_handler)
 
 #print the node it works on
 import socket
 
-print "The job ran on: ",socket.gethostname()
+sys.stdout.write("The job ran on: %s\n"%socket.gethostname())
+sys.stdout.flush()
 subprocess.call("echo $SLURM_JOB_NODELIST",shell=True)
 
 #Check if a restart file exist
@@ -94,8 +97,28 @@ restart_files=[b for a,b in restart_files]
 restart_sizes=[os.stat(f).st_size for f in restart_files]
 
 if len(restart_files)<4: #If there are less than 4 restart files, run lammps normally
-    print "Starting the simulation"
-    subprocess.call([lmp_serial],stdin=open(input_file))
+    sys.stdout.write("Starting the simulation\n")
+    sys.stdout.flush()
+    #Create a start script and randomize some numbers
+    input_restart=input_file+'.r00'
+    handle=open(input_file)
+    rhandle=open(input_restart,'w+')
+    for line in handle:
+        c=line.split()
+        if len(c)>0 and len(c[0])>0 and c[0][0]<>'#': #Filter only valid commands
+            comm=c[0]
+            if comm=='velocity':
+                c[-1]=str(random.randint(0,1E8))
+                rhandle.write('%s\n'%(' '.join(c)))
+            elif comm=='fix' and c[3]=='langevin':
+                c[-1]=str(random.randint(0,1E8))
+                rhandle.write('%s\n'%(' '.join(c)))
+            else:
+                rhandle.write(' '.join(c)+'\n')
+    handle.close()
+    rhandle.close()
+    #Run the start script
+    subprocess.call([lmp_serial],stdin=open(input_restart))
 else:
     #All restart_files should have the same size
     for restart,size in zip(restart_files,restart_sizes):
@@ -103,13 +126,15 @@ else:
             break
     restart_iter=int(restart.split('.')[-1])
     if restart_iter<=int(run_iter)-int(restart_freq):
-        print "Restarting the simulation"
+        sys.stdout.write("Restarting the simulation\n")
+        sys.stdout.flush()
         ########################
         #Restart the simulation#
         ########################
         r=len(glob.glob('*_dump'))+1
-        print "Restart number: ",r
-        print "Restart iteration: ",restart_iter
+        sys.stdout.write("Restart number: %i\n"%r)
+        sys.stdout.write("Restart iteration: %i\n"%restart_iter)
+        sys.stdout.flush()
         #Locate first iteration of last restart:
         if r>1:
             handle=open(input_file+'.r%02i'%(r-1))
@@ -144,6 +169,12 @@ else:
                     rhandle.write('read_restart %s\n'%restart)  
                 elif comm=='reset_timestep':
                     rhandle.write('reset_timestep %i\n'%int(restart_iter))  
+                elif comm=='velocity':
+                    c[-1]=str(random.randint(0,1E8))
+                    rhandle.write('%s\n'%(' '.join(c)))
+                elif comm=='fix' and c[3]=='langevin':
+                    c[-1]=str(random.randint(0,1E8))
+                    rhandle.write('%s\n'%(' '.join(c)))
                 else:
                     rhandle.write(' '.join(c)+'\n')
         handle.close()
@@ -179,13 +210,14 @@ with open('All_log', 'w') as fout:
         fout.write(line)
 
 #Calculate the q_value
-subprocess.call("python ~/opt/script/CalcQValue_multi.py $PDB All_dump All_qo 1",shell=True) ##Modify the path to your own path
+subprocess.call("python /home/cab22/Programs/awsemmd/results_analysis_tools/CalcQValue.py 1lw9 All_dump All_qo",shell=True)
 
 subprocess.call("cat fix_backbone_coeff.data >> All_log",shell=True)
 
 subprocess.call("BuildAllAtomsFromLammps.py All_dump VMD_tray -seq %s"%seq_file,shell=True)
 
 #Print the date it finishes
-print "The job ends at", time.ctime()
+sys.stdout.write("The job ends at %s\n"%time.ctime())
+sys.stdout.flush()
 
 

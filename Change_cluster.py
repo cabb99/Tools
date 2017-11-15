@@ -16,7 +16,10 @@ cluster_configuration={
  'account':'commons'},
 #nots
 ('nots','commons'):
-{'time':15*24*60*60,
+{'time':24*60*60,
+ 'account':'commons'},
+('nots','ctbp-common'):
+{'time':24*60*60,
  'account':'ctbp-common'},
 ('nots','interactive'):
 {'time':30*60,

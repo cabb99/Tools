@@ -170,8 +170,10 @@ for script in args.scripts:
     keys.sort()
     print "New Configuration"
     new_configuration=''
+    #print keys    
     for arg in keys:
-        new_configuration+='#SBATCH --%s=%s\n'%(arg,new_args[arg])
+	if arg<>'cluster':
+        	new_configuration+='#SBATCH --%s=%s\n'%(arg,new_args[arg])
     print new_configuration
     #Replace with new configuration
     import fileinput

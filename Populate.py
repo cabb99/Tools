@@ -32,6 +32,7 @@ def main(source,Changes,ask=True):
             if found:
                 break
             max_l=l
+        #print lvalues[0]
         common_pattern=lvalues[0][:max_l]
         new_folders=[]
         new_changes=[]
@@ -40,6 +41,7 @@ def main(source,Changes,ask=True):
                 #print '%s_%s'%(F,v.replace(common_pattern,alias))
                 if len(common_pattern)>0:
                     new_folders+=['%s_%s'%(F,v.replace(common_pattern,alias))]
+                    #print v,common_pattern,alias
                 else:
                     new_folders+=['%s_%s%s'%(F,alias,v)]
             for c in zchanges:
@@ -127,7 +129,7 @@ def query_yes_no(question, default=True):
 
 if __name__=='__main__':
     import argparse
-    parser=argparse.ArgumentParser(description='Make copies of one folder changing some parameters in specified files')
+    parser=argparse.ArgumentParser(description='Make copies of one folder changing some parameters in specified files.\n Caution: The program tries to find a common pattern in the final_values and replaces it with the Alias')
     parser.add_argument('Source',help='The folder you want to copy',type=str)
     parser.add_argument('-c','--change',nargs=4,help='The changes you want to make on the files. The change should be defined as: File_to_change line_to_change final_values Alias',action='append')
     parser.add_argument('-y',help='Continue without asking',action='store_true')

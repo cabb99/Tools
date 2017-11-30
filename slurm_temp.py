@@ -9,7 +9,11 @@
 #SBATCH --time=1-00:00:00
 
 #Modules
-import time,subprocess, os, glob
+import time
+import subprocess
+import os
+import glob
+import random
 
 #Parameters
 import os
@@ -95,7 +99,26 @@ restart_sizes=[os.stat(f).st_size for f in restart_files]
 
 if len(restart_files)<4: #If there are less than 4 restart files, run lammps normally
     print "Starting the simulation"
-    subprocess.call([lmp_serial],stdin=open(input_file))
+    #Create a start script and randomize some numbers
+    input_restart=input_file+'.r00'
+    handle=open(input_file)
+    rhandle=open(input_restart,'w+')
+    for line in handle:
+        c=line.split()
+        if len(c)>0 and len(c[0])>0 and c[0][0]<>'#': #Filter only valid commands
+            comm=c[0]
+            if comm=='velocity':
+                c[-1]=str(random.randint(0,1E8))
+                rhandle.write('%s\n'%(' '.join(c)))
+            elif comm=='fix' and c[3]=='langevin':
+                c[-1]=str(random.randint(0,1E8))
+                rhandle.write('%s\n'%(' '.join(c)))
+            else:
+                rhandle.write(' '.join(c)+'\n')
+    handle.close()
+    rhandle.close()
+    #Run the start script
+    subprocess.call([lmp_serial],stdin=open(input_restart))
 else:
     #All restart_files should have the same size
     for restart,size in zip(restart_files,restart_sizes):
@@ -144,6 +167,12 @@ else:
                     rhandle.write('read_restart %s\n'%restart)  
                 elif comm=='reset_timestep':
                     rhandle.write('reset_timestep %i\n'%int(restart_iter))  
+                elif comm=='velocity':
+                    c[-1]=str(random.randint(0,1E8))
+                    rhandle.write('%s\n'%(' '.join(c)))
+                elif comm=='fix' and c[3]=='langevin':
+                    c[-1]=str(random.randint(0,1E8))
+                    rhandle.write('%s\n'%(' '.join(c)))
                 else:
                     rhandle.write(' '.join(c)+'\n')
         handle.close()

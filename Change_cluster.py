@@ -123,7 +123,7 @@ def sformat(t):
         return '%02i:%02i'%(m,s)
 
 args=parser.parse_args()
-command_args={arg.replace('_','-'):vars(args)[arg] for arg in dir(args) if (arg[0] <> '_' and vars(args)[arg]<>None and vars(args)[arg]<>False and arg<>'scripts')}
+command_args=dict([(arg.replace('_','-'),vars(args)[arg]) for arg in dir(args) if (arg[0] <> '_' and vars(args)[arg]<>None and vars(args)[arg]<>False and arg<>'scripts')])
 try:
     default_args=cluster_configuration[(args.cluster,args.partition)]
 except KeyError:

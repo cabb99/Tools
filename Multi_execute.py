@@ -10,6 +10,7 @@ if __name__=='__main__':
     parser.add_argument('Folders',help='The folder where the commands will be executed')
     parser.add_argument('-c','--command',help='The command you want to execute')
     parser.add_argument('-i','--condition', nargs=2, metavar='Cond',help='File_to_read line_to_find If it finds a line in the file, it will be executed')
+    #parser.add_argument('Folders',help='The folder where the commands will be executed',nargs='*')
     args=parser.parse_args()
     
     #Remember original directory

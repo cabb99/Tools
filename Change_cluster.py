@@ -16,7 +16,10 @@ cluster_configuration={
  'account':'commons'},
 #nots
 ('nots','commons'):
-{'time':15*24*60*60,
+{'time':24*60*60,
+ 'account':'commons'},
+('nots','ctbp-common'):
+{'time':24*60*60,
  'account':'ctbp-common'},
 ('nots','interactive'):
 {'time':30*60,
@@ -56,6 +59,8 @@ parser.add_argument('--cpus-per-task',type=int,
                     help='Number of processes per task')
 parser.add_argument('--ntasks-per-node',type=int,
                     help='Number of tasks per node')
+parser.add_argument('--threads-per-core',type=int,
+                    help='Number of threads per core')
 parser.add_argument('--mem-per-cpu',type=str,
                     help='Maximum amount of physical memory used per process, ex:1024M')
 parser.add_argument('--exclusive',action='store_true',

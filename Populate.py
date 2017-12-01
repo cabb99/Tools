@@ -74,6 +74,7 @@ def main(source,Changes,ask=True):
     if proceed:
         #Change the parameters       
         for folder,changes in zip(Folders,zchanges):
+            print source,folder
             shutil.copytree(source,folder)
             filemods=set([filemod for filemod,linemod,v in changes])
             for filemod in filemods:            

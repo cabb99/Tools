@@ -3,6 +3,7 @@ import argparse
 import subprocess
 import glob
 import os
+import time
 
 if __name__=='__main__':
     
@@ -10,11 +11,13 @@ if __name__=='__main__':
     parser.add_argument('Folders',help='The folder where the commands will be executed')
     parser.add_argument('-c','--command',help='The command you want to execute')
     parser.add_argument('-i','--condition', nargs=2, metavar='Cond',help='File_to_read line_to_find If it finds a line in the file, it will be executed')
+    parser.add_argument('-p','--processes',help='Number of parallel processes to be executed', default=1,type=int)
     #parser.add_argument('Folders',help='The folder where the commands will be executed',nargs='*')
     args=parser.parse_args()
     
     #Remember original directory
     initial_dir=os.getcwd()
+    Pool=[]
     for folder in glob.glob(args.Folders):
         #Enter the directory
         os.chdir(folder)
@@ -28,10 +31,24 @@ if __name__=='__main__':
         except ValueError:
             Execute=False
         except TypeError:
-	    Execute=True
+            Execute=True
 
-	#Execute the command
-        if Execute:        
+        #Execute the command
+        if Execute and args.processes==1:   
             subprocess.call(args.command, shell=True)
+        elif Execute and args.processes>1:
+            if len(Pool)<args.processes:
+                Pool+=[subprocess.Popen(args.command, shell=True)]
+            else:
+                while True:
+                    polls=[p.poll() for p in Pool]
+                    np=len([p for p in polls if p is None])
+                    #print len(polls),np
+                    if np<args.processes:
+                        Pool+=[subprocess.Popen(args.command, shell=True)]
+                        break
+                    time.sleep(1E-2)
+
+            
         #Back to the original directory
         os.chdir(initial_dir)

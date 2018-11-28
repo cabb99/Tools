@@ -21,6 +21,9 @@ cluster_configuration={
 ('nots','ctbp-common'):
 {'time':24*60*60,
  'account':'ctbp-common'},
+('nots','challenge'):
+{'time':3*24*60*60,
+ 'account':'challenge'},
 ('nots','interactive'):
 {'time':30*60,
  'account':'commons'},
